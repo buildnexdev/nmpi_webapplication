@@ -1,170 +1,195 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useCallback, useEffect, useState } from 'react';
+import { api, downloadFile, errorMessage, mediaUrl } from '../api/client';
+import { MemberDetailModal } from '../components/MemberDetailModal';
+import { useToast } from '../components/Toast';
+import { Avatar, EmptyState, ErrorState, PageHeader, Pagination, Spinner, StatusBadge, formatDate } from '../components/ui';
 
-export const MembersPage: React.FC = () => {
-  const [members, setMembers] = useState<any[]>([]);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [search, setSearch] = useState('');
+interface Option {
+  id: number;
+  name_en?: string;
+  name?: string;
+}
+
+const PAGE_SIZE = 20;
+
+export const MembersPage: React.FC<{ fixedStatus?: string; title?: string; subtitle?: string }> = ({
+  fixedStatus,
+  title = 'Members',
+  subtitle = 'Search, filter and manage every registered member.',
+}) => {
+  const toast = useToast();
+  const [parliaments, setParliaments] = useState<Option[]>([]);
+  const [districts, setDistricts] = useState<Option[]>([]);
+  const [roles, setRoles] = useState<Option[]>([]);
+  const [filters, setFilters] = useState({ search: '', parliament_id: '', district_id: '', role_id: '', status: fixedStatus || '' });
+  const [searchInput, setSearchInput] = useState('');
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<{ items: any[]; total: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedMember, setSelectedMember] = useState<any | null>(null);
-
-  const fetchMembers = () => {
-    setLoading(true);
-    let url = `http://localhost:5000/api/members?1=1`;
-    if (statusFilter) url += `&status=${statusFilter}`;
-    if (search) url += `&search=${search}`;
-
-    axios.get(url)
-      .then(res => {
-        setMembers(res.data.data);
-        setLoading(false);
-      })
-      .catch(() => {
-        // Fallback demo dataset
-        setMembers([
-          { id: 1, member_id: 'ORG-2026-000001', full_name: 'Organization Administrator', mobile: '+10000000001', district_name: 'Central Capital', status: 'APPROVED', joining_date: '2026-01-01' },
-          { id: 2, member_id: 'ORG-2026-000002', full_name: 'Regional Director', mobile: '+10000000002', district_name: 'Central Capital', status: 'APPROVED', joining_date: '2026-01-10' },
-          { id: 3, member_id: 'ORG-2026-000003', full_name: 'John Doe Member', mobile: '+10000000003', district_name: 'Central Capital', status: 'APPROVED', joining_date: '2026-02-14' },
-          { id: 4, member_id: 'ORG-2026-000004', full_name: 'Jane Smith Volunteer', mobile: '+10000000004', district_name: 'Central Capital', status: 'APPROVED', joining_date: '2026-03-01' },
-        ]);
-        setLoading(false);
-      });
-  };
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
-    fetchMembers();
-  }, [statusFilter]);
+    api.get('/master-data/parliaments').then((r) => setParliaments(r.data.data)).catch(() => {});
+    api.get('/master-data/districts').then((r) => setDistricts(r.data.data)).catch(() => {});
+    api.get('/master-data/roles/all').then((r) => setRoles(r.data.data)).catch(() => {});
+  }, []);
 
-  const handleUpdateStatus = (id: number, newStatus: string) => {
-    axios.patch(`http://localhost:5000/api/members/${id}/status`, { status: newStatus })
-      .then(() => {
-        alert(`Member status updated to ${newStatus}`);
-        fetchMembers();
-      })
-      .catch(() => {
-        alert(`Member status updated to ${newStatus} (Local State)`);
-        setMembers(prev => prev.map(m => m.id === id ? { ...m, status: newStatus } : m));
-      });
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setFilters((f) => (f.search === searchInput.trim() ? f : { ...f, search: searchInput.trim() }));
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    const params: Record<string, any> = { page, pageSize: PAGE_SIZE };
+    Object.entries(filters).forEach(([k, v]) => v && (params[k] = v));
+    api
+      .get('/members', { params })
+      .then((res) => setData(res.data.data))
+      .catch((err) => setError(errorMessage(err)))
+      .finally(() => setLoading(false));
+  }, [filters, page]);
+
+  useEffect(load, [load]);
+
+  const setFilter = (key: keyof typeof filters, value: string) => {
+    setFilters((f) => ({ ...f, [key]: value }));
+    setPage(1);
   };
 
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams(Object.entries(filters).filter(([, v]) => v) as [string, string][]).toString();
+      await downloadFile(`/members/export.csv${params ? `?${params}` : ''}`, 'members.csv');
+    } catch (err) {
+      toast(errorMessage(err, 'Export failed'), 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const hasFilters = Object.entries(filters).some(([k, v]) => v && !(fixedStatus && k === 'status'));
+
   return (
-    <div>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h2 className="h4 text-dark fw-bold m-0">Member Directory Management</h2>
-          <small className="text-muted">Search, filter, and inspect verified members</small>
-        </div>
-      </div>
-
-      {/* Filter Panel */}
-      <div className="card-custom p-3 mb-4">
-        <div className="row g-3">
-          <div className="col-md-4">
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              placeholder="Search Member ID, Name, Mobile..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="col-md-3">
-            <select className="form-select form-select-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-              <option value="">All Membership Statuses</option>
-              <option value="PENDING">PENDING</option>
-              <option value="APPROVED">APPROVED</option>
-              <option value="REJECTED">REJECTED</option>
-              <option value="SUSPENDED">SUSPENDED</option>
-            </select>
-          </div>
-          <div className="col-md-2">
-            <button className="btn btn-maroon btn-sm w-100" onClick={fetchMembers}>
-              <i className="bi bi-search me-1"></i> Search
+    <>
+      <PageHeader
+        title={title}
+        subtitle={subtitle}
+        actions={
+          <>
+            <button className="btn btn-light" onClick={load}>
+              <i className="bi bi-arrow-clockwise me-1"></i>Refresh
             </button>
+            <button className="btn btn-brand" onClick={exportCsv} disabled={exporting}>
+              {exporting ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="bi bi-download me-1"></i>}
+              Export CSV
+            </button>
+          </>
+        }
+      />
+
+      <div className="panel">
+        <div className="filter-bar">
+          <div className="input-group filter-search">
+            <span className="input-group-text"><i className="bi bi-search"></i></span>
+            <input className="form-control" placeholder="Search name, member ID, phone or email" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
           </div>
+          <select className="form-select" value={filters.parliament_id} onChange={(e) => setFilter('parliament_id', e.target.value)} aria-label="Parliament constituency">
+            <option value="">All constituencies</option>
+            {parliaments.map((p) => <option key={p.id} value={p.id}>{p.name_en}</option>)}
+          </select>
+          <select className="form-select" value={filters.district_id} onChange={(e) => setFilter('district_id', e.target.value)} aria-label="District">
+            <option value="">All districts</option>
+            {districts.map((d) => <option key={d.id} value={d.id}>{d.name_en}</option>)}
+          </select>
+          <select className="form-select" value={filters.role_id} onChange={(e) => setFilter('role_id', e.target.value)} aria-label="Role">
+            <option value="">All roles</option>
+            {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+          {!fixedStatus && (
+            <select className="form-select" value={filters.status} onChange={(e) => setFilter('status', e.target.value)} aria-label="Status">
+              <option value="">All statuses</option>
+              {['APPROVED', 'PENDING', 'REJECTED', 'SUSPENDED'].map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          )}
+          {hasFilters && (
+            <button
+              className="btn btn-link text-decoration-none"
+              onClick={() => {
+                setSearchInput('');
+                setFilters({ search: '', parliament_id: '', district_id: '', role_id: '', status: fixedStatus || '' });
+                setPage(1);
+              }}
+            >
+              Clear
+            </button>
+          )}
         </div>
-      </div>
 
-      {/* Data Table */}
-      <div className="table-custom">
-        <table className="table table-hover m-0">
-          <thead>
-            <tr>
-              <th>Member ID</th>
-              <th>Member Name</th>
-              <th>Mobile</th>
-              <th>District</th>
-              <th>Status</th>
-              <th>Joining Date</th>
-              <th className="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} className="text-center py-4"><div className="spinner-border text-maroon"></div></td></tr>
-            ) : members.length === 0 ? (
-              <tr><td colSpan={7} className="text-center py-4 text-muted">No member records found matching criteria.</td></tr>
-            ) : (
-              members.map(m => (
-                <tr key={m.id}>
-                  <td className="fw-bold text-maroon">{m.member_id || 'PENDING'}</td>
-                  <td className="fw-semibold">{m.full_name}</td>
-                  <td>{m.mobile}</td>
-                  <td>{m.district_name || 'District'}</td>
-                  <td>
-                    <span className={`badge ${m.status === 'APPROVED' ? 'bg-success' : m.status === 'PENDING' ? 'bg-warning text-dark' : 'bg-danger'}`}>
-                      {m.status}
-                    </span>
-                  </td>
-                  <td>{m.joining_date || '-'}</td>
-                  <td className="text-end">
-                    <div className="btn-group btn-group-sm">
-                      <button className="btn btn-outline-secondary" onClick={() => setSelectedMember(m)}>
-                        <i className="bi bi-eye"></i> Inspect
-                      </button>
-                      {m.status === 'PENDING' && (
-                        <button className="btn btn-success" onClick={() => handleUpdateStatus(m.id, 'APPROVED')}>
-                          Approve
-                        </button>
-                      )}
-                      {m.status === 'APPROVED' && (
-                        <button className="btn btn-outline-danger" onClick={() => handleUpdateStatus(m.id, 'SUSPENDED')}>
-                          Suspend
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Member Inspect Modal */}
-      {selectedMember && (
-        <div className="modal show d-block bg-black bg-opacity-50" tabIndex={-1}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header bg-maroon text-white">
-                <h5 className="modal-title h6 text-gold">Member Details: {selectedMember.member_id}</h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setSelectedMember(null)}></button>
-              </div>
-              <div className="modal-body small">
-                <div className="row g-2">
-                  <div className="col-6 text-muted">Full Name:</div><div className="col-6 fw-bold">{selectedMember.full_name}</div>
-                  <div className="col-6 text-muted">Mobile:</div><div className="col-6 fw-bold">{selectedMember.mobile}</div>
-                  <div className="col-6 text-muted">Status:</div><div className="col-6 fw-bold text-success">{selectedMember.status}</div>
-                  <div className="col-6 text-muted">District:</div><div className="col-6 fw-bold">{selectedMember.district_name}</div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary btn-sm" onClick={() => setSelectedMember(null)}>Close</button>
-              </div>
+        {error ? (
+          <ErrorState message={error} onRetry={load} />
+        ) : loading && !data ? (
+          <Spinner />
+        ) : data && data.items.length === 0 ? (
+          <EmptyState icon="bi-people" title={fixedStatus ? 'Nothing waiting for review' : 'No members found'} text={hasFilters ? 'Try changing the filters.' : undefined} />
+        ) : data ? (
+          <>
+            <div className={`table-responsive ${loading ? 'opacity-50' : ''}`}>
+              <table className="table table-modern table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Member</th>
+                    <th>Phone</th>
+                    <th className="d-none d-lg-table-cell">Constituency</th>
+                    <th className="d-none d-md-table-cell">District</th>
+                    <th className="d-none d-xl-table-cell">Role</th>
+                    <th>Status</th>
+                    <th className="d-none d-xl-table-cell">Joined</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.items.map((m) => (
+                    <tr key={m.id} className="clickable" onClick={() => setSelectedId(m.id)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setSelectedId(m.id)}>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <Avatar src={mediaUrl(m.profile_image)} name={m.full_name} />
+                          <div className="min-w-0">
+                            <div className="fw-semibold text-truncate">{m.full_name}</div>
+                            <div className="small text-muted font-monospace">{m.member_id}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="text-nowrap">{m.country_code} {m.phone_number}</td>
+                      <td className="d-none d-lg-table-cell">{m.parliament_name || '—'}</td>
+                      <td className="d-none d-md-table-cell">{m.district_name || '—'}</td>
+                      <td className="d-none d-xl-table-cell">{m.role_name}</td>
+                      <td><StatusBadge status={m.status} /></td>
+                      <td className="d-none d-xl-table-cell text-nowrap">{formatDate(m.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
-        </div>
+            <Pagination page={page} pageSize={PAGE_SIZE} total={data.total} onChange={setPage} />
+          </>
+        ) : null}
+      </div>
+
+      {selectedId && (
+        <MemberDetailModal
+          memberId={selectedId}
+          roles={roles as any}
+          onClose={() => setSelectedId(null)}
+          onChanged={load}
+        />
       )}
-    </div>
+    </>
   );
 };

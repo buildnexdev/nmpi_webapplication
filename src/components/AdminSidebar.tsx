@@ -1,58 +1,84 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 
-export const AdminSidebar: React.FC = () => {
+interface NavItem {
+  to: string;
+  icon: string;
+  label: string;
+  contentOnly?: boolean;
+}
+
+const SECTIONS: Array<{ title: string; items: NavItem[] }> = [
+  {
+    title: 'Overview',
+    items: [{ to: '/', icon: 'bi-grid-1x2-fill', label: 'Dashboard' }],
+  },
+  {
+    title: 'Membership',
+    items: [
+      { to: '/members', icon: 'bi-people-fill', label: 'Members' },
+      { to: '/applications', icon: 'bi-hourglass-split', label: 'Pending Approvals' },
+      { to: '/reports', icon: 'bi-bar-chart-line-fill', label: 'Reports & Export' },
+    ],
+  },
+  {
+    title: 'Website Content',
+    items: [
+      { to: '/news', icon: 'bi-newspaper', label: 'News', contentOnly: true },
+      { to: '/events', icon: 'bi-calendar-event-fill', label: 'Events', contentOnly: true },
+      { to: '/leadership-admin', icon: 'bi-person-badge-fill', label: 'District Executives', contentOnly: true },
+      { to: '/cms', icon: 'bi-file-earmark-richtext-fill', label: 'Pages', contentOnly: true },
+      { to: '/uploads-media', icon: 'bi-images', label: 'Media Library', contentOnly: true },
+    ],
+  },
+  {
+    title: 'System',
+    items: [
+      { to: '/roles', icon: 'bi-shield-lock-fill', label: 'Roles & Access' },
+      { to: '/account', icon: 'bi-person-gear', label: 'My Account' },
+    ],
+  },
+];
+
+export const AdminSidebar: React.FC<{ open: boolean; onNavigate: () => void }> = ({ open, onNavigate }) => {
+  const { isContentAdmin } = useAuth();
+
   return (
-    <aside className="admin-sidebar">
+    <aside className={`admin-sidebar ${open ? 'open' : ''}`}>
       <div className="sidebar-brand">
-        <i className="bi bi-shield-lock-fill text-gold fs-3"></i>
-        <div>
-          <div className="fw-bold text-white leading-none small">ORGANIZATION PORTAL</div>
-          <small className="text-gold" style={{ fontSize: '0.65rem' }}>ADMIN CONTROL PANEL</small>
+        <img src="/logo.jpg" alt="NMPI emblem" />
+        <div className="overflow-hidden">
+          <div className="sidebar-brand-ta">நேதாஜி மக்கள் பாதுகாப்பு இயக்கம்</div>
+          <div className="sidebar-brand-en">Admin Portal</div>
         </div>
       </div>
 
-      <ul className="sidebar-nav">
-        <li className="sidebar-nav-item">
-          <NavLink to="/" className={({ isActive }) => `sidebar-nav-link ${isActive ? 'active' : ''}`} end>
-            <i className="bi bi-speedometer2"></i> Dashboard
-          </NavLink>
-        </li>
-        <li className="sidebar-nav-item">
-          <NavLink to="/members" className={({ isActive }) => `sidebar-nav-link ${isActive ? 'active' : ''}`}>
-            <i className="bi bi-people-fill"></i> Member Directory
-          </NavLink>
-        </li>
-        <li className="sidebar-nav-item">
-          <NavLink to="/applications" className={({ isActive }) => `sidebar-nav-link ${isActive ? 'active' : ''}`}>
-            <i className="bi bi-card-checklist"></i> Applications Queue
-          </NavLink>
-        </li>
-        <li className="sidebar-nav-item">
-          <NavLink to="/news" className={({ isActive }) => `sidebar-nav-link ${isActive ? 'active' : ''}`}>
-            <i className="bi bi-newspaper"></i> News & Bulletins
-          </NavLink>
-        </li>
-        <li className="sidebar-nav-item">
-          <NavLink to="/events" className={({ isActive }) => `sidebar-nav-link ${isActive ? 'active' : ''}`}>
-            <i className="bi bi-calendar-event"></i> Community Events
-          </NavLink>
-        </li>
-        <li className="sidebar-nav-item">
-          <NavLink to="/roles" className={({ isActive }) => `sidebar-nav-link ${isActive ? 'active' : ''}`}>
-            <i className="bi bi-shield-check"></i> Roles & RBAC Matrix
-          </NavLink>
-        </li>
-        <li className="sidebar-nav-item">
-          <NavLink to="/reports" className={({ isActive }) => `sidebar-nav-link ${isActive ? 'active' : ''}`}>
-            <i className="bi bi-bar-chart-fill"></i> Analytics & Reports
-          </NavLink>
-        </li>
-      </ul>
+      <nav className="sidebar-nav" aria-label="Main navigation">
+        {SECTIONS.map((section) => {
+          const items = section.items.filter((i) => !i.contentOnly || isContentAdmin);
+          if (items.length === 0) return null;
+          return (
+            <div key={section.title} className="sidebar-section">
+              <div className="sidebar-section-title">{section.title}</div>
+              {items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === '/'}
+                  onClick={onNavigate}
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                >
+                  <i className={`bi ${item.icon}`}></i>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          );
+        })}
+      </nav>
 
-      <div className="p-3 border-top border-secondary text-center small text-muted">
-        System Build v1.0.0
-      </div>
+      <div className="sidebar-footer">NMPI Platform v2.0</div>
     </aside>
   );
 };

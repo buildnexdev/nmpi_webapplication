@@ -1,27 +1,62 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
+import { WEBSITE_URL, mediaUrl } from '../api/client';
+import { Avatar } from './ui';
 
-export const AdminTopbar: React.FC = () => {
+const ROLE_LABEL: Record<string, string> = {
+  SUPER_ADMIN: 'Super Admin',
+  ADMIN: 'Admin',
+  DISTRICT_ADMIN: 'District Coordinator',
+  TALUK_ADMIN: 'Taluk Coordinator',
+  UNIT_ADMIN: 'Unit Coordinator',
+};
+
+export const AdminTopbar: React.FC<{ onMenu: () => void }> = ({ onMenu }) => {
+  const { user, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const close = (e: MouseEvent) => menuRef.current && !menuRef.current.contains(e.target as Node) && setOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  const name = user?.member?.full_name || user?.email || '';
+  const roleLabel = ROLE_LABEL[user?.roles.find((r) => ROLE_LABEL[r]) || ''] || 'Staff';
+
   return (
     <header className="admin-topbar">
-      <div className="d-flex align-items-center gap-3">
-        <i className="bi bi-list fs-4 text-muted cursor-pointer"></i>
-        <h1 className="h5 fw-bold text-dark m-0">Organization Administration</h1>
-      </div>
+      <button className="btn btn-icon d-lg-none" onClick={onMenu} aria-label="Open menu">
+        <i className="bi bi-list"></i>
+      </button>
 
-      <div className="d-flex align-items-center gap-3">
-        <div className="badge bg-gold text-maroon font-bold px-3 py-2">
-          <i className="bi bi-shield-fill-check me-1"></i> SUPER_ADMIN SESSION
-        </div>
-        <div className="dropdown">
-          <button className="btn btn-light btn-sm dropdown-toggle d-flex align-items-center gap-2 border" type="button" data-bs-toggle="dropdown">
-            <i className="bi bi-person-circle text-maroon fs-5"></i>
-            <span>admin@orgplatform.org</span>
+      <div className="ms-auto d-flex align-items-center gap-2">
+        <a className="btn btn-sm btn-light d-none d-sm-inline-flex align-items-center gap-1" href={WEBSITE_URL} target="_blank" rel="noreferrer">
+          <i className="bi bi-box-arrow-up-right"></i> View website
+        </a>
+
+        <div className="position-relative" ref={menuRef}>
+          <button className="user-chip" onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}>
+            <Avatar src={mediaUrl(user?.member?.profile_image)} name={name} size={34} />
+            <span className="d-none d-md-flex flex-column text-start lh-sm">
+              <span className="fw-semibold text-truncate" style={{ maxWidth: 180 }}>{name}</span>
+              <span className="small text-muted">{roleLabel}</span>
+            </span>
+            <i className="bi bi-chevron-down small text-muted"></i>
           </button>
-          <ul className="dropdown-menu dropdown-menu-end shadow">
-            <li><a className="dropdown-item" href="http://localhost:3000" target="_blank" rel="noreferrer"><i className="bi bi-globe me-2"></i>View Public Website</a></li>
-            <li><hr className="dropdown-divider" /></li>
-            <li><button className="dropdown-item text-danger" onClick={() => alert('Logged out')}><i className="bi bi-box-arrow-right me-2"></i>Sign Out</button></li>
-          </ul>
+          {open && (
+            <div className="dropdown-panel" role="menu">
+              <div className="px-3 py-2 small text-muted border-bottom text-truncate">{user?.email}</div>
+              <Link className="dropdown-panel-item" to="/account" onClick={() => setOpen(false)}>
+                <i className="bi bi-person-gear"></i> My account
+              </Link>
+              <button className="dropdown-panel-item text-danger" onClick={logout}>
+                <i className="bi bi-box-arrow-right"></i> Sign out
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>
