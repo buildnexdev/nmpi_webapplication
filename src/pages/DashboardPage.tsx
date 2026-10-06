@@ -19,8 +19,8 @@ interface Stats {
   recent_members: Array<{ id: number; member_id: string; full_name: string; profile_image: string | null; status: string; created_at: string; district_name: string }>;
 }
 
-function lastSixMonths(data: Stats['monthly_registrations']) {
-  const map = new Map(data.map((d) => [d.month, d.count]));
+function lastSixMonths(data?: Stats['monthly_registrations']) {
+  const map = new Map((data || []).map((d) => [d.month, d.count]));
   const out: Array<{ label: string; count: number }> = [];
   const now = new Date();
   for (let i = 5; i >= 0; i--) {
@@ -46,7 +46,7 @@ const KpiCard: React.FC<{ icon: string; tone: string; label: string; value: numb
 };
 
 export const DashboardPage: React.FC = () => {
-  const { user, isContentAdmin } = useAuth();
+  const { user, canAccess } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +64,7 @@ export const DashboardPage: React.FC = () => {
   useEffect(load, [load]);
 
   const greetingName = user?.member?.full_name?.split(' ')[0] || 'Admin';
-  const maxDistrict = Math.max(1, ...(stats?.district_counts.map((d) => d.count) || [1]));
+  const maxDistrict = Math.max(1, ...((stats?.district_counts || []).map((d) => d.count) || [1]));
 
   return (
     <>
@@ -85,7 +85,7 @@ export const DashboardPage: React.FC = () => {
       ) : stats ? (
         <>
           <div className="kpi-grid">
-            <KpiCard icon="bi-people-fill" tone="brand" label="Total members" value={stats.total_members} hint={`+${stats.new_last_30_days} in the last 30 days`} to="/members" />
+            <KpiCard icon="bi-people-fill" tone="brand" label="Total members" value={stats.total_members} hint={`+${stats.new_last_30_days || 0} in the last 30 days`} to="/members" />
             <KpiCard icon="bi-patch-check-fill" tone="success" label="Approved" value={stats.approved_members} hint="Active digital ID cards" to="/members" />
             <KpiCard icon="bi-hourglass-split" tone="warning" label="Pending approval" value={stats.pending_applications} hint="Awaiting review" to="/applications" />
             <KpiCard
@@ -94,7 +94,7 @@ export const DashboardPage: React.FC = () => {
               label="Upcoming events"
               value={stats.upcoming_events}
               hint={`${stats.published_news} news articles published`}
-              to={isContentAdmin ? '/events' : undefined}
+              to={canAccess('events') ? '/events' : undefined}
             />
           </div>
 
@@ -103,7 +103,7 @@ export const DashboardPage: React.FC = () => {
               <Card title="New registrations (last 6 months)">
                 <div style={{ height: 280 }}>
                   <ResponsiveContainer>
-                    <BarChart data={lastSixMonths(stats.monthly_registrations)} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                    <BarChart data={lastSixMonths(stats.monthly_registrations || [])} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} />
                       <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
@@ -117,11 +117,11 @@ export const DashboardPage: React.FC = () => {
 
             <div className="col-xl-4">
               <Card title="Top districts">
-                {stats.district_counts.length === 0 ? (
+                {!(stats.district_counts || []).length ? (
                   <EmptyState icon="bi-geo-alt" title="No members yet" />
                 ) : (
                   <ul className="bar-list">
-                    {stats.district_counts.map((d) => (
+                    {(stats.district_counts || []).map((d) => (
                       <li key={d.id}>
                         <div className="d-flex justify-content-between small mb-1">
                           <span className="fw-semibold">{d.district_name}</span>
@@ -137,11 +137,11 @@ export const DashboardPage: React.FC = () => {
 
             <div className="col-xl-7">
               <Card title="Recent registrations" actions={<Link to="/members" className="small">View all</Link>} flush>
-                {stats.recent_members.length === 0 ? (
+                {(stats.recent_members || []).length === 0 ? (
                   <EmptyState title="No members registered yet" />
                 ) : (
                   <ul className="list-rows">
-                    {stats.recent_members.map((m) => (
+                    {(stats.recent_members || []).map((m) => (
                       <li key={m.id}>
                         <Avatar src={mediaUrl(m.profile_image)} name={m.full_name} />
                         <div className="flex-grow-1 min-w-0">
@@ -161,7 +161,7 @@ export const DashboardPage: React.FC = () => {
 
             <div className="col-xl-5">
               <Card title="Members by parliament constituency" flush>
-                {stats.parliament_counts.length === 0 ? (
+                {!(stats.parliament_counts || []).length ? (
                   <EmptyState icon="bi-bank" title="No data yet" />
                 ) : (
                   <table className="table table-modern mb-0">
@@ -169,7 +169,7 @@ export const DashboardPage: React.FC = () => {
                       <tr><th>Code</th><th>Constituency</th><th className="text-end">Members</th></tr>
                     </thead>
                     <tbody>
-                      {stats.parliament_counts.map((p) => (
+                      {(stats.parliament_counts || []).map((p) => (
                         <tr key={p.id}>
                           <td><span className="code-pill">{p.parliament_code}</span></td>
                           <td>

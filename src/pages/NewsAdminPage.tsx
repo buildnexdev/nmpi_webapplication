@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { api, errorMessage, mediaUrl } from '../api/client';
+import { api, asArray, errorMessage, mediaUrl } from '../api/client';
 import { ImagePicker } from '../components/ImagePicker';
 import { useToast } from '../components/Toast';
 import { ConfirmDialog, EmptyState, ErrorState, Field, Modal, PageHeader, Spinner, StatusBadge, formatDate } from '../components/ui';
@@ -37,7 +37,7 @@ export const NewsAdminPage: React.FC = () => {
     setError(null);
     api
       .get('/news/admin/list', { params: statusFilter ? { status: statusFilter } : {} })
-      .then((r) => setItems(r.data.data))
+      .then((r) => setItems(asArray(r.data.data)))
       .catch((err) => setError(errorMessage(err)));
   }, [statusFilter]);
   useEffect(load, [load]);
@@ -102,11 +102,11 @@ export const NewsAdminPage: React.FC = () => {
           <ErrorState message={error} onRetry={load} />
         ) : !items ? (
           <Spinner />
-        ) : items.length === 0 ? (
+        ) : (items || []).length === 0 ? (
           <EmptyState icon="bi-newspaper" title="No articles yet" text="Publish your first announcement for members and the public." />
         ) : (
           <ul className="content-list">
-            {items.map((n) => (
+            {items!.map((n) => (
               <li key={n.id}>
                 <div className="content-thumb">{n.cover_image ? <img src={mediaUrl(n.cover_image)} alt="" /> : <i className="bi bi-newspaper"></i>}</div>
                 <div className="flex-grow-1 min-w-0">

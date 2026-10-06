@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { api, errorMessage, mediaUrl } from '../api/client';
+import { api, asArray, errorMessage, mediaUrl } from '../api/client';
 import { ImagePicker } from '../components/ImagePicker';
 import { useToast } from '../components/Toast';
 import { ConfirmDialog, EmptyState, ErrorState, Field, Modal, PageHeader, Spinner, StatusBadge, formatDate } from '../components/ui';
@@ -40,7 +40,7 @@ export const EventsAdminPage: React.FC = () => {
     setError(null);
     api
       .get('/events/admin/list', { params: statusFilter ? { status: statusFilter } : {} })
-      .then((r) => setItems(r.data.data))
+      .then((r) => setItems(asArray(r.data.data)))
       .catch((err) => setError(errorMessage(err)));
   }, [statusFilter]);
   useEffect(load, [load]);
@@ -105,11 +105,11 @@ export const EventsAdminPage: React.FC = () => {
           <ErrorState message={error} onRetry={load} />
         ) : !items ? (
           <Spinner />
-        ) : items.length === 0 ? (
+        ) : (items || []).length === 0 ? (
           <EmptyState icon="bi-calendar-event" title="No events yet" text="Create an event to announce it to members." />
         ) : (
           <ul className="content-list">
-            {items.map((ev) => {
+            {items!.map((ev) => {
               const d = new Date(`${ev.event_date}T00:00:00`);
               return (
                 <li key={ev.id}>

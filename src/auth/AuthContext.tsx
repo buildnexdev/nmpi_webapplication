@@ -1,5 +1,6 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, tokenStore } from '../api/client';
+import { isContentRole, isPortalAdminRole, isStaffRole, normalizeRoleCodes, pagesForUser } from './roles';
 
 export interface SessionUser {
   id: number;
@@ -8,17 +9,18 @@ export interface SessionUser {
   phone_number: string;
   roles: string[];
   role_names: string[];
+  pages?: string[];
   member: { id: number; member_id: string; full_name: string; profile_image: string | null; role_name: string } | null;
 }
-
-const STAFF_ROLES = ['SUPER_ADMIN', 'ADMIN', 'DISTRICT_ADMIN', 'TALUK_ADMIN', 'UNIT_ADMIN'];
-const CONTENT_ROLES = ['SUPER_ADMIN', 'ADMIN'];
 
 interface AuthContextValue {
   user: SessionUser | null;
   loading: boolean;
+  pages: string[];
   isContentAdmin: boolean;
   isSuperAdmin: boolean;
+  isPortalAdmin: boolean;
+  canAccess: (page: string) => boolean;
   login: (login: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -26,6 +28,10 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export class NotStaffError extends Error {}
+
+function hydrateUser(u: SessionUser): SessionUser {
+  return { ...u, pages: pagesForUser(u.roles, u.pages) };
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -44,8 +50,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     api
       .get('/auth/me')
       .then((res) => {
-        const u: SessionUser = res.data.data;
-        if (u.roles.some((r) => STAFF_ROLES.includes(r))) setUser(u);
+        const u: SessionUser = hydrateUser(res.data.data);
+        if (isStaffRole(u.roles)) setUser(u);
         else tokenStore.clear();
       })
       .catch(() => tokenStore.clear())
@@ -60,29 +66,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = useCallback(async (loginId: string, password: string) => {
     const res = await api.post('/auth/login', { login: loginId, password });
-    const { token, user: u } = res.data.data as { token: string; user: SessionUser };
-    if (!u.roles.some((r) => STAFF_ROLES.includes(r))) {
+    const { token, user: raw } = res.data.data as { token: string; user: SessionUser };
+    const u = hydrateUser(raw);
+    if (!isStaffRole(u.roles)) {
       throw new NotStaffError('This account does not have access to the admin portal.');
     }
     tokenStore.set(token);
     setUser(u);
   }, []);
 
-  const roles = user?.roles || [];
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        logout,
-        isContentAdmin: roles.some((r) => CONTENT_ROLES.includes(r)),
-        isSuperAdmin: roles.includes('SUPER_ADMIN'),
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const pages = user?.pages || [];
+  const canAccess = useCallback(
+    (page: string) => {
+      if (!user) return false;
+      if (page === 'account') return true;
+      return pages.includes(page);
+    },
+    [user, pages]
   );
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      loading,
+      pages,
+      login,
+      logout,
+      canAccess,
+      isContentAdmin: isContentRole(user?.roles),
+      isSuperAdmin: normalizeRoleCodes(user?.roles).includes('SUPER_ADMIN'),
+      isPortalAdmin: isPortalAdminRole(user?.roles),
+    }),
+    [user, loading, pages, login, logout, canAccess]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export function useAuth() {

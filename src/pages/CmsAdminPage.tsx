@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { api, errorMessage, WEBSITE_URL } from '../api/client';
+import { api, asArray, errorMessage, WEBSITE_URL } from '../api/client';
 import { useToast } from '../components/Toast';
 import { EmptyState, ErrorState, Field, PageHeader, Spinner, formatDate } from '../components/ui';
 
@@ -29,7 +29,7 @@ export const CmsAdminPage: React.FC = () => {
     api
       .get('/pages')
       .then((r) => {
-        const list: Page[] = r.data.data;
+        const list: Page[] = asArray(r.data.data);
         setPages(list);
         const key = selectKey || selectedKey || list[0]?.page_key;
         const page = list.find((p) => p.page_key === key);

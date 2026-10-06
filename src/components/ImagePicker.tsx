@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { api, errorMessage, mediaUrl } from '../api/client';
+import { api, asArray, errorMessage, mediaUrl } from '../api/client';
 import { Modal, Spinner } from './ui';
 
 interface MediaFile {
@@ -36,7 +36,7 @@ export const ImagePicker: React.FC<{ value: string | null; onChange: (path: stri
     if (!library) {
       try {
         const res = await api.get('/uploads/list');
-        setLibrary(res.data.data);
+        setLibrary(asArray(res.data.data));
       } catch (err) {
         setError(errorMessage(err));
         setLibrary([]);
@@ -79,7 +79,7 @@ export const ImagePicker: React.FC<{ value: string | null; onChange: (path: stri
         <Modal title="Choose from media library" onClose={() => setLibraryOpen(false)} size="lg">
           {!library ? (
             <Spinner />
-          ) : library.length === 0 ? (
+          ) : (library || []).length === 0 ? (
             <p className="text-muted text-center py-4">No images uploaded yet.</p>
           ) : (
             <div className="media-pick-grid">

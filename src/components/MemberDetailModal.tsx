@@ -90,7 +90,7 @@ export const MemberDetailModal: React.FC<{ memberId: number; roles: Role[]; onCl
     }
   };
 
-  const assignableRoles = roles.filter((r) => isSuperAdmin || !['Admin', 'Super Admin'].includes(r.name));
+  const assignableRoles = (roles || []).filter((r) => isSuperAdmin || !['Admin', 'Super Admin'].includes(r.name));
   const isSelf = member?.user_id === user?.id;
 
   return (

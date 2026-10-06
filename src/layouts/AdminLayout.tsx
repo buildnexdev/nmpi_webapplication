@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AdminSidebar } from '../components/AdminSidebar';
 import { AdminTopbar } from '../components/AdminTopbar';
@@ -8,7 +8,7 @@ import { Spinner } from '../components/ui';
 export const AdminLayout: React.FC = () => {
   const { user, loading } = useAuth();
   const location = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false);
 
   if (loading) return <div className="vh-100 d-flex align-items-center justify-content-center"><Spinner label="Checking your session..." /></div>;
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
@@ -25,6 +25,11 @@ export const AdminLayout: React.FC = () => {
       </div>
     </div>
   );
+};
+
+export const PageGuard: React.FC<{ page: string; children: React.ReactElement }> = ({ page, children }) => {
+  const { canAccess } = useAuth();
+  return canAccess(page) ? children : <Navigate to="/" replace />;
 };
 
 export const ContentAdminOnly: React.FC<{ children: React.ReactElement }> = ({ children }) => {

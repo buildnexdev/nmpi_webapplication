@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { api, errorMessage } from '../api/client';
+import { api, asArray, errorMessage } from '../api/client';
 import { useToast } from '../components/Toast';
 import { ConfirmDialog, EmptyState, ErrorState, PageHeader, Spinner } from '../components/ui';
 
@@ -23,7 +23,7 @@ export const UploadsMediaPage: React.FC = () => {
 
   const load = useCallback(() => {
     setError(null);
-    api.get('/uploads/list').then((r) => setItems(r.data.data)).catch((err) => setError(errorMessage(err)));
+    api.get('/uploads/list').then((r) => setItems(asArray(r.data.data))).catch((err) => setError(errorMessage(err)));
   }, []);
   useEffect(load, [load]);
 
@@ -98,11 +98,11 @@ export const UploadsMediaPage: React.FC = () => {
         <ErrorState message={error} onRetry={load} />
       ) : !items ? (
         <Spinner />
-      ) : items.length === 0 ? (
+      ) : (items || []).length === 0 ? (
         <EmptyState icon="bi-images" title="No images yet" />
       ) : (
         <div className="media-grid">
-          {items.map((m) => (
+          {items!.map((m) => (
             <figure key={m.filename} className="media-card">
               <a href={m.url} target="_blank" rel="noreferrer" className="media-card-img">
                 <img src={m.url} alt={m.filename} loading="lazy" />

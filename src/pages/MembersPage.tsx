@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { api, downloadFile, errorMessage, mediaUrl } from '../api/client';
+import { api, asArray, asPaged, downloadFile, errorMessage, mediaUrl } from '../api/client';
 import { MemberDetailModal } from '../components/MemberDetailModal';
 import { useToast } from '../components/Toast';
 import { Avatar, EmptyState, ErrorState, PageHeader, Pagination, Spinner, StatusBadge, formatDate } from '../components/ui';
@@ -31,9 +31,9 @@ export const MembersPage: React.FC<{ fixedStatus?: string; title?: string; subti
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
-    api.get('/master-data/parliaments').then((r) => setParliaments(r.data.data)).catch(() => {});
-    api.get('/master-data/districts').then((r) => setDistricts(r.data.data)).catch(() => {});
-    api.get('/master-data/roles/all').then((r) => setRoles(r.data.data)).catch(() => {});
+    api.get('/master-data/parliaments').then((r) => setParliaments(asArray(r.data.data))).catch(() => {});
+    api.get('/master-data/districts').then((r) => setDistricts(asArray(r.data.data))).catch(() => {});
+    api.get('/master-data/roles/all').then((r) => setRoles(asArray(r.data.data))).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -51,7 +51,7 @@ export const MembersPage: React.FC<{ fixedStatus?: string; title?: string; subti
     Object.entries(filters).forEach(([k, v]) => v && (params[k] = v));
     api
       .get('/members', { params })
-      .then((res) => setData(res.data.data))
+      .then((res) => setData(asPaged(res.data.data)))
       .catch((err) => setError(errorMessage(err)))
       .finally(() => setLoading(false));
   }, [filters, page]);
@@ -137,7 +137,7 @@ export const MembersPage: React.FC<{ fixedStatus?: string; title?: string; subti
           <ErrorState message={error} onRetry={load} />
         ) : loading && !data ? (
           <Spinner />
-        ) : data && data.items.length === 0 ? (
+        ) : data && (data.items || []).length === 0 ? (
           <EmptyState icon="bi-people" title={fixedStatus ? 'Nothing waiting for review' : 'No members found'} text={hasFilters ? 'Try changing the filters.' : undefined} />
         ) : data ? (
           <>
@@ -155,7 +155,7 @@ export const MembersPage: React.FC<{ fixedStatus?: string; title?: string; subti
                   </tr>
                 </thead>
                 <tbody>
-                  {data.items.map((m) => (
+                  {(data.items || []).map((m) => (
                     <tr key={m.id} className="clickable" onClick={() => setSelectedId(m.id)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setSelectedId(m.id)}>
                       <td>
                         <div className="d-flex align-items-center gap-2">
@@ -177,7 +177,7 @@ export const MembersPage: React.FC<{ fixedStatus?: string; title?: string; subti
                 </tbody>
               </table>
             </div>
-            <Pagination page={page} pageSize={PAGE_SIZE} total={data.total} onChange={setPage} />
+            <Pagination page={page} pageSize={PAGE_SIZE} total={data.total || 0} onChange={setPage} />
           </>
         ) : null}
       </div>

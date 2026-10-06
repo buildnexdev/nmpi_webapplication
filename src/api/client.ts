@@ -41,6 +41,27 @@ export function mediaUrl(path?: string | null): string | undefined {
   return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
+/** Always return an array so list pages never crash on `.length`. */
+export function asArray<T = any>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (value && typeof value === 'object') {
+    const o = value as Record<string, unknown>;
+    if (Array.isArray(o.items)) return o.items as T[];
+    if (Array.isArray(o.rows)) return o.rows as T[];
+    if (Array.isArray(o.data)) return o.data as T[];
+  }
+  return [];
+}
+
+export function asPaged<T = any>(value: unknown): { items: T[]; total: number } {
+  const items = asArray<T>(value);
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const total = Number((value as any).total ?? (value as any).count ?? items.length);
+    return { items, total: Number.isFinite(total) ? total : items.length };
+  }
+  return { items, total: items.length };
+}
+
 export async function downloadFile(url: string, fallbackName: string) {
   const res = await api.get(url, { responseType: 'blob' });
   const disposition = String(res.headers['content-disposition'] || '');

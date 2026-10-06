@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts';
-import { api, downloadFile, errorMessage } from '../api/client';
+import { api, asArray, downloadFile, errorMessage } from '../api/client';
 import { useToast } from '../components/Toast';
 import { Card, EmptyState, ErrorState, Field, PageHeader, Spinner } from '../components/ui';
 
@@ -25,9 +25,9 @@ export const ReportsAdminPage: React.FC = () => {
 
   useEffect(() => {
     load();
-    api.get('/master-data/districts').then((r) => setDistricts(r.data.data)).catch(() => {});
-    api.get('/master-data/parliaments').then((r) => setParliaments(r.data.data)).catch(() => {});
-    api.get('/master-data/roles/all').then((r) => setRoles(r.data.data)).catch(() => {});
+    api.get('/master-data/districts').then((r) => setDistricts(asArray(r.data.data))).catch(() => {});
+    api.get('/master-data/parliaments').then((r) => setParliaments(asArray(r.data.data))).catch(() => {});
+    api.get('/master-data/roles/all').then((r) => setRoles(asArray(r.data.data))).catch(() => {});
   }, [load]);
 
   const exportCsv = async () => {
@@ -130,7 +130,7 @@ export const ReportsAdminPage: React.FC = () => {
             <Card title="Members by role">
               <div style={{ height: 280 }}>
                 <ResponsiveContainer>
-                  <BarChart data={stats.role_counts} layout="vertical" margin={{ top: 4, right: 16, left: 24, bottom: 4 }}>
+                  <BarChart data={asArray(stats.role_counts)} layout="vertical" margin={{ top: 4, right: 16, left: 24, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eee" />
                     <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
                     <YAxis type="category" dataKey="role_name" width={130} tick={{ fontSize: 12 }} />
@@ -143,14 +143,14 @@ export const ReportsAdminPage: React.FC = () => {
           </div>
           <div className="col-12">
             <Card title="Members by district (top 10)" flush>
-              {stats.district_counts.length === 0 ? (
+              {(stats.district_counts || []).length === 0 ? (
                 <EmptyState title="No data yet" />
               ) : (
                 <div className="table-responsive">
                   <table className="table table-modern mb-0">
                     <thead><tr><th>District</th><th className="text-end">Members</th><th style={{ width: '40%' }}>Share</th></tr></thead>
                     <tbody>
-                      {stats.district_counts.map((d: any) => {
+                      {(stats.district_counts || []).map((d: any) => {
                         const pct = stats.total_members ? Math.round((d.count / stats.total_members) * 100) : 0;
                         return (
                           <tr key={d.id}>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, errorMessage, mediaUrl } from '../api/client';
+import { api, asArray, errorMessage, mediaUrl } from '../api/client';
 import { ImagePicker } from '../components/ImagePicker';
 import { useToast } from '../components/Toast';
 import { Avatar, ConfirmDialog, EmptyState, ErrorState, Field, Modal, PageHeader, Spinner, StatusBadge } from '../components/ui';
@@ -36,7 +36,7 @@ export const LeadershipAdminPage: React.FC = () => {
 
   const load = useCallback(() => {
     setError(null);
-    api.get('/leadership/admin/list').then((r) => setItems(r.data.data)).catch((err) => setError(errorMessage(err)));
+    api.get('/leadership/admin/list').then((r) => setItems(asArray(r.data.data))).catch((err) => setError(errorMessage(err)));
   }, []);
   useEffect(load, [load]);
 
@@ -105,7 +105,7 @@ export const LeadershipAdminPage: React.FC = () => {
           <ErrorState message={error} onRetry={load} />
         ) : !filtered ? (
           <Spinner />
-        ) : filtered.length === 0 ? (
+        ) : (filtered || []).length === 0 ? (
           <EmptyState icon="bi-person-badge" title={search ? 'No matches' : 'No executives added yet'} />
         ) : (
           <div className="table-responsive">
@@ -114,7 +114,7 @@ export const LeadershipAdminPage: React.FC = () => {
                 <tr><th style={{ width: 60 }}>#</th><th>Executive</th><th>District</th><th className="d-none d-md-table-cell">Contact</th><th>Status</th><th></th></tr>
               </thead>
               <tbody>
-                {filtered.map((l) => (
+                {(filtered || []).map((l) => (
                   <tr key={l.id}>
                     <td className="text-muted">{l.display_order}</td>
                     <td>

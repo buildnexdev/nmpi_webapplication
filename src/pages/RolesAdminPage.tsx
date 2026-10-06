@@ -1,52 +1,99 @@
 import React, { useEffect, useState } from 'react';
-import { api, errorMessage } from '../api/client';
+import { api, asArray, errorMessage } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
+import { useToast } from '../components/Toast';
 import { Card, ErrorState, PageHeader, Spinner } from '../components/ui';
 
-interface RoleInfo {
+interface PortalPage {
+  key: string;
+  label: string;
+  section: string;
+}
+
+interface RoleRow {
+  id: number;
   name: string;
-  scope: string;
+  code: string;
+  label: string;
+  description: string | null;
+  member_count: number;
+  locked: boolean;
   access: Record<string, boolean>;
 }
 
-const CAPABILITIES: [string, string][] = [
-  ['dashboard', 'Dashboard & reports'],
-  ['members', 'View members & applications'],
-  ['approve', 'Approve / reject / suspend'],
-  ['idcard', 'Download member ID cards'],
-  ['roles', 'Change member roles'],
-  ['content', 'Manage news, events, pages & media'],
-  ['admins', 'Grant Admin / Super Admin'],
-];
-
-const ROLE_MATRIX: RoleInfo[] = [
-  { name: 'Super Admin', scope: 'Entire organisation', access: { dashboard: true, members: true, approve: true, idcard: true, roles: true, content: true, admins: true } },
-  { name: 'Admin', scope: 'Entire organisation', access: { dashboard: true, members: true, approve: true, idcard: true, roles: true, content: true, admins: false } },
-  { name: 'District Coordinator', scope: 'Members in their district', access: { dashboard: true, members: true, approve: true, idcard: true, roles: false, content: false, admins: false } },
-  { name: 'Taluk Coordinator', scope: 'Members in their taluk / block', access: { dashboard: true, members: true, approve: true, idcard: true, roles: false, content: false, admins: false } },
-  { name: 'Unit Coordinator', scope: 'Members in their village / unit', access: { dashboard: true, members: true, approve: true, idcard: true, roles: false, content: false, admins: false } },
-  { name: 'Volunteer', scope: 'Own profile only', access: {} },
-  { name: 'Member', scope: 'Own profile, digital ID & app', access: {} },
-];
-
 export const RolesAdminPage: React.FC = () => {
-  const [counts, setCounts] = useState<Record<string, number> | null>(null);
+  const toast = useToast();
+  const { isPortalAdmin } = useAuth();
+  const [pages, setPages] = useState<PortalPage[]>([]);
+  const [roles, setRoles] = useState<RoleRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
-  useEffect(() => {
+  const load = () => {
+    setError(null);
     api
-      .get('/dashboard/statistics')
-      .then((r) => setCounts(Object.fromEntries(r.data.data.role_counts.map((x: any) => [x.role_name, x.count]))))
+      .get('/access/matrix')
+      .then((r) => {
+        setPages(asArray(r.data.data.pages));
+        setRoles(asArray(r.data.data.roles));
+        setDirty(false);
+      })
       .catch((err) => setError(errorMessage(err)));
-  }, []);
+  };
+
+  useEffect(load, []);
+
+  const toggle = (roleId: number, pageKey: string) => {
+    if (!isPortalAdmin) return;
+    setRoles((list) =>
+      (list || []).map((role) => {
+        if (role.id !== roleId || role.locked) return role;
+        if (pageKey === 'account') return role;
+        if (pageKey === 'roles') return role;
+        return { ...role, access: { ...role.access, [pageKey]: !role.access[pageKey] } };
+      })
+    );
+    setDirty(true);
+  };
+
+  const save = async () => {
+    if (!roles) return;
+    setSaving(true);
+    try {
+      const res = await api.put('/access/matrix', {
+        items: roles.map((r) => ({ role_id: r.id, access: r.access })),
+      });
+      setPages(res.data.data.pages || pages);
+      setRoles(res.data.data.roles || roles);
+      setDirty(false);
+      toast('Role page access saved');
+    } catch (err) {
+      toast(errorMessage(err), 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <>
-      <PageHeader title="Roles & access" subtitle="What each role can do in this admin panel. To change someone's role, open them from the Members page." />
+      <PageHeader
+        title="Roles & access"
+        subtitle="Choose which admin portal pages each role can open. Only Admin and Super Admin can change this."
+        actions={
+          isPortalAdmin ? (
+            <button className="btn btn-brand" onClick={save} disabled={!dirty || saving || !roles}>
+              {saving && <span className="spinner-border spinner-border-sm me-2"></span>}
+              Save access
+            </button>
+          ) : undefined
+        }
+      />
 
-      {error && <ErrorState message={error} />}
-      {!counts && !error ? (
+      {error && <ErrorState message={error} onRetry={load} />}
+      {!roles && !error ? (
         <Spinner />
-      ) : (
+      ) : roles ? (
         <Card flush>
           <div className="table-responsive">
             <table className="table table-modern align-middle mb-0">
@@ -54,33 +101,54 @@ export const RolesAdminPage: React.FC = () => {
                 <tr>
                   <th>Role</th>
                   <th className="text-end">Members</th>
-                  {CAPABILITIES.map(([key, label]) => <th key={key} className="text-center small" style={{ minWidth: 96 }}>{label}</th>)}
+                  {pages.map((p) => (
+                    <th key={p.key} className="text-center small" style={{ minWidth: 88 }}>{p.label}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {ROLE_MATRIX.map((role) => (
-                  <tr key={role.name}>
+                {roles.map((role) => (
+                  <tr key={role.id}>
                     <td>
-                      <div className="fw-semibold">{role.name}</div>
-                      <div className="small text-muted">{role.scope}</div>
+                      <div className="fw-semibold">{role.label || role.name}</div>
+                      <div className="small text-muted">{role.description || role.name}{role.locked ? ' · locked' : ''}</div>
                     </td>
-                    <td className="text-end fw-semibold">{counts?.[role.name] ?? 0}</td>
-                    {CAPABILITIES.map(([key]) => (
-                      <td key={key} className="text-center">
-                        {role.access[key] ? <i className="bi bi-check-circle-fill text-success" aria-label="Allowed"></i> : <i className="bi bi-dash text-muted" aria-label="Not allowed"></i>}
-                      </td>
-                    ))}
+                    <td className="text-end fw-semibold">{role.member_count}</td>
+                    {pages.map((p) => {
+                      const on = Boolean(role.access[p.key]);
+                      const lockedCell = role.locked || p.key === 'account' || p.key === 'roles' || !isPortalAdmin;
+                      return (
+                        <td key={p.key} className="text-center">
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            checked={on}
+                            disabled={lockedCell}
+                            title={
+                              p.key === 'roles'
+                                ? 'Roles & Access is only for Admin and Super Admin'
+                                : role.locked
+                                  ? 'Super Admin always has full access'
+                                  : p.label
+                            }
+                            onChange={() => toggle(role.id, p.key)}
+                            aria-label={`${role.label} can open ${p.label}`}
+                          />
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </Card>
-      )}
+      ) : null}
 
       <div className="alert alert-light border mt-4 small mb-0">
         <i className="bi bi-info-circle me-2 text-brand"></i>
-        People who register on the website always start as <strong>Member</strong>. Coordinators only see members who share their district, taluk or unit as recorded on the coordinator's own membership profile.
+        People who register on the website always start as <strong>Member</strong> and cannot open this admin portal.
+        Super Admin always has every page. The Roles & Access page itself can only be used by Admin and Super Admin.
       </div>
     </>
   );

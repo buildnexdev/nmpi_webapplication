@@ -6,43 +6,43 @@ interface NavItem {
   to: string;
   icon: string;
   label: string;
-  contentOnly?: boolean;
+  page: string;
 }
 
 const SECTIONS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'Overview',
-    items: [{ to: '/', icon: 'bi-grid-1x2-fill', label: 'Dashboard' }],
+    items: [{ to: '/', icon: 'bi-grid-1x2-fill', label: 'Dashboard', page: 'dashboard' }],
   },
   {
     title: 'Membership',
     items: [
-      { to: '/members', icon: 'bi-people-fill', label: 'Members' },
-      { to: '/applications', icon: 'bi-hourglass-split', label: 'Pending Approvals' },
-      { to: '/reports', icon: 'bi-bar-chart-line-fill', label: 'Reports & Export' },
+      { to: '/members', icon: 'bi-people-fill', label: 'Members', page: 'members' },
+      { to: '/applications', icon: 'bi-hourglass-split', label: 'Pending Approvals', page: 'applications' },
+      { to: '/reports', icon: 'bi-bar-chart-line-fill', label: 'Reports & Export', page: 'reports' },
     ],
   },
   {
     title: 'Website Content',
     items: [
-      { to: '/news', icon: 'bi-newspaper', label: 'News', contentOnly: true },
-      { to: '/events', icon: 'bi-calendar-event-fill', label: 'Events', contentOnly: true },
-      { to: '/leadership-admin', icon: 'bi-person-badge-fill', label: 'District Executives', contentOnly: true },
-      { to: '/cms', icon: 'bi-file-earmark-richtext-fill', label: 'Pages', contentOnly: true },
-      { to: '/uploads-media', icon: 'bi-images', label: 'Media Library', contentOnly: true },
+      { to: '/news', icon: 'bi-newspaper', label: 'News', page: 'news' },
+      { to: '/events', icon: 'bi-calendar-event-fill', label: 'Events', page: 'events' },
+      { to: '/leadership-admin', icon: 'bi-person-badge-fill', label: 'District Executives', page: 'leadership' },
+      { to: '/cms', icon: 'bi-file-earmark-richtext-fill', label: 'Pages', page: 'pages' },
+      { to: '/uploads-media', icon: 'bi-images', label: 'Media Library', page: 'media' },
     ],
   },
   {
     title: 'System',
     items: [
-      { to: '/roles', icon: 'bi-shield-lock-fill', label: 'Roles & Access' },
-      { to: '/account', icon: 'bi-person-gear', label: 'My Account' },
+      { to: '/roles', icon: 'bi-shield-lock-fill', label: 'Roles & Access', page: 'roles' },
+      { to: '/account', icon: 'bi-person-gear', label: 'My Account', page: 'account' },
     ],
   },
 ];
 
 export const AdminSidebar: React.FC<{ open: boolean; onNavigate: () => void }> = ({ open, onNavigate }) => {
-  const { isContentAdmin } = useAuth();
+  const { canAccess } = useAuth();
 
   return (
     <aside className={`admin-sidebar ${open ? 'open' : ''}`}>
@@ -56,7 +56,7 @@ export const AdminSidebar: React.FC<{ open: boolean; onNavigate: () => void }> =
 
       <nav className="sidebar-nav" aria-label="Main navigation">
         {SECTIONS.map((section) => {
-          const items = section.items.filter((i) => !i.contentOnly || isContentAdmin);
+          const items = section.items.filter((i) => canAccess(i.page));
           if (items.length === 0) return null;
           return (
             <div key={section.title} className="sidebar-section">
