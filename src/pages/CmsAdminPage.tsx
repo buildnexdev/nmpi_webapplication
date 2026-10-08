@@ -12,7 +12,7 @@ interface Page {
   updated_at?: string;
 }
 
-const KNOWN_PAGES: Record<string, string> = { about: '/about', history: '/history', structure: '/structure' };
+const KNOWN_PAGES: Record<string, string> = { about: '/about', structure: '/structure' };
 
 export const CmsAdminPage: React.FC = () => {
   const toast = useToast();

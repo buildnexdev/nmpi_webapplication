@@ -170,7 +170,7 @@ export const EventsAdminPage: React.FC = () => {
               <div className="col-md-4"><Field label="End time"><input type="time" className="form-control" value={hhmm(editing.end_time)} onChange={(e) => set('end_time', e.target.value)} /></Field></div>
               <div className="col-md-6"><Field label="Location / venue name" required><input className="form-control" value={editing.location || ''} onChange={(e) => set('location', e.target.value)} required /></Field></div>
               <div className="col-md-6"><Field label="Full address"><input className="form-control" value={editing.venue_address || ''} onChange={(e) => set('venue_address', e.target.value)} /></Field></div>
-              <div className="col-md-6"><Field label="Cover image"><ImagePicker value={editing.cover_image || null} onChange={(v) => set('cover_image', v)} /></Field></div>
+              <div className="col-md-6"><Field label="Cover image"><ImagePicker folder="Events" value={editing.cover_image || null} onChange={(v) => set('cover_image', v)} /></Field></div>
               <div className="col-md-3"><Field label="Capacity"><input type="number" min={1} className="form-control" value={editing.capacity || ''} onChange={(e) => set('capacity', Number(e.target.value))} /></Field></div>
               <div className="col-md-3">
                 <Field label="Status">

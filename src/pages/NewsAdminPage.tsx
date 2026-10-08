@@ -14,12 +14,33 @@ interface News {
   content: string;
   content_ta: string | null;
   cover_image: string | null;
+  place: string | null;
+  place_ta: string | null;
+  news_date: string | null;
+  news_time: string | null;
   is_featured: number;
   status: 'DRAFT' | 'PUBLISHED';
   published_at: string;
 }
 
-const EMPTY: Partial<News> = { category: 'Announcement', title: '', title_ta: '', summary: '', summary_ta: '', content: '', content_ta: '', cover_image: null, is_featured: 0, status: 'PUBLISHED' };
+const hhmm = (t?: string | null) => (t ? t.slice(0, 5) : '');
+
+const EMPTY: Partial<News> = {
+  category: 'Announcement',
+  title: '',
+  title_ta: '',
+  summary: '',
+  summary_ta: '',
+  content: '',
+  content_ta: '',
+  cover_image: null,
+  place: '',
+  place_ta: '',
+  news_date: '',
+  news_time: '',
+  is_featured: 0,
+  status: 'PUBLISHED',
+};
 const CATEGORIES = ['Announcement', 'Press Release', 'Event Report', 'Statement', 'Campaign'];
 
 export const NewsAdminPage: React.FC = () => {
@@ -113,7 +134,11 @@ export const NewsAdminPage: React.FC = () => {
                   <div className="d-flex flex-wrap gap-2 align-items-center mb-1">
                     <StatusBadge status={n.status} />
                     {!!n.is_featured && <span className="status-badge status-brand"><i className="bi bi-star-fill me-1"></i>Featured</span>}
-                    <span className="small text-muted">{n.category} · {formatDate(n.published_at)}</span>
+                    <span className="small text-muted">
+                      {n.category}
+                      {n.news_date ? ` · ${formatDate(n.news_date)}` : ` · ${formatDate(n.published_at)}`}
+                      {n.place ? ` · ${n.place}` : ''}
+                    </span>
                   </div>
                   <div className="fw-semibold text-truncate">{n.title}</div>
                   {n.title_ta && <div className="small text-muted text-truncate">{n.title_ta}</div>}
@@ -158,7 +183,13 @@ export const NewsAdminPage: React.FC = () => {
               </div>
             </div>
             <div className="row">
-              <div className="col-md-6"><Field label="Cover image"><ImagePicker value={editing.cover_image || null} onChange={(v) => set('cover_image', v)} /></Field></div>
+              <div className="col-md-6"><Field label="Place (English)"><input className="form-control" value={editing.place || ''} onChange={(e) => set('place', e.target.value)} placeholder="Venue or location" /></Field></div>
+              <div className="col-md-6"><Field label="இடம் (Tamil place)"><input className="form-control" value={editing.place_ta || ''} onChange={(e) => set('place_ta', e.target.value)} /></Field></div>
+              <div className="col-md-4"><Field label="Date"><input type="date" className="form-control" value={editing.news_date || ''} onChange={(e) => set('news_date', e.target.value)} /></Field></div>
+              <div className="col-md-4"><Field label="Time"><input type="time" className="form-control" value={hhmm(editing.news_time)} onChange={(e) => set('news_time', e.target.value)} /></Field></div>
+            </div>
+            <div className="row">
+              <div className="col-md-6"><Field label="Cover image"><ImagePicker folder="News" value={editing.cover_image || null} onChange={(v) => set('cover_image', v)} /></Field></div>
               <div className="col-md-3">
                 <Field label="Category">
                   <select className="form-select" value={editing.category} onChange={(e) => set('category', e.target.value)}>

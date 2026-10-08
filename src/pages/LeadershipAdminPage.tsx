@@ -157,7 +157,7 @@ export const LeadershipAdminPage: React.FC = () => {
         >
           <form id="leader-form" onSubmit={save}>
             {formError && <div className="alert alert-danger py-2">{formError}</div>}
-            <Field label="Photo"><ImagePicker value={editing.photo_url || null} onChange={(v) => set('photo_url', v)} /></Field>
+            <Field label="Photo"><ImagePicker folder="Leaders" value={editing.photo_url || null} onChange={(v) => set('photo_url', v)} /></Field>
             <div className="row">
               <div className="col-md-6"><Field label="Name (English)" required><input className="form-control" value={editing.name || ''} onChange={(e) => set('name', e.target.value)} required /></Field></div>
               <div className="col-md-6"><Field label="பெயர் (Tamil)"><input className="form-control" value={editing.name_ta || ''} onChange={(e) => set('name_ta', e.target.value)} /></Field></div>
