@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export const API_ORIGIN = (import.meta.env.VITE_API_URL || 'https://api.nmpi.in').replace(/\/$/, '');
-export const WEBSITE_URL = import.meta.env.VITE_WEBSITE_URL || 'http://localhost:3000';
+export const WEBSITE_URL = (import.meta.env.VITE_WEBSITE_URL || 'https://nmpi.in').replace(/\/$/, '');
 
 const TOKEN_KEY = 'nmpi_admin_token';
 

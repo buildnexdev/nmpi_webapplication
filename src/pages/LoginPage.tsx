@@ -63,7 +63,7 @@ export const LoginPage: React.FC = () => {
               autoComplete="username"
               value={loginId}
               onChange={(e) => setLoginId(e.target.value)}
-              placeholder="admin@example.org"
+              placeholder="Mobile (10 digits) or email"
               required
               autoFocus
             />
