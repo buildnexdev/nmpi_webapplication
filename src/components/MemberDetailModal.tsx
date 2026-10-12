@@ -129,7 +129,7 @@ export const MemberDetailModal: React.FC<{ memberId: number; roles: Role[]; onCl
               <div className="d-flex flex-wrap gap-2 align-items-center">
                 <span className="code-pill">{member.member_id}</span>
                 <StatusBadge status={member.status} />
-                <span className="text-muted small">{member.role_name}</span>
+                <span className="text-muted small">{member.designation || member.role_name}</span>
               </div>
             </div>
           </div>
@@ -137,6 +137,7 @@ export const MemberDetailModal: React.FC<{ memberId: number; roles: Role[]; onCl
           <div className="row g-4">
             <div className="col-md-6">
               <h6 className="detail-heading">Personal</h6>
+              {member.designation && <Row label="Padhavi (Designation)" value={member.designation} />}
               <Row label="Father's name" value={member.father_name} />
               <Row label="Date of birth" value={formatDate(member.date_of_birth)} />
               <Row label="Gender" value={member.gender} />

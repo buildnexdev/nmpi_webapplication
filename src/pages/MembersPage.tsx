@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { api, asArray, asPaged, downloadFile, errorMessage, mediaUrl } from '../api/client';
 import { MemberDetailModal } from '../components/MemberDetailModal';
+import { CreateMemberModal } from '../components/CreateMemberModal';
 import { useToast } from '../components/Toast';
 import { Avatar, EmptyState, ErrorState, PageHeader, Pagination, Spinner, StatusBadge, formatDate } from '../components/ui';
 
@@ -28,6 +29,7 @@ export const MembersPage: React.FC<{ fixedStatus?: string; title?: string; subti
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -84,10 +86,13 @@ export const MembersPage: React.FC<{ fixedStatus?: string; title?: string; subti
         subtitle={subtitle}
         actions={
           <>
+            <button className="btn btn-brand" onClick={() => setCreateOpen(true)}>
+              <i className="bi bi-person-plus-fill me-1"></i>Add member
+            </button>
             <button className="btn btn-light" onClick={load}>
               <i className="bi bi-arrow-clockwise me-1"></i>Refresh
             </button>
-            <button className="btn btn-brand" onClick={exportCsv} disabled={exporting}>
+            <button className="btn btn-outline-secondary" onClick={exportCsv} disabled={exporting}>
               {exporting ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="bi bi-download me-1"></i>}
               Export CSV
             </button>
@@ -169,7 +174,7 @@ export const MembersPage: React.FC<{ fixedStatus?: string; title?: string; subti
                       <td className="text-nowrap">{m.country_code} {m.phone_number}</td>
                       <td className="d-none d-lg-table-cell">{m.parliament_name || '—'}</td>
                       <td className="d-none d-md-table-cell">{m.district_name || '—'}</td>
-                      <td className="d-none d-xl-table-cell">{m.role_name}</td>
+                      <td className="d-none d-xl-table-cell">{m.designation || m.role_name}</td>
                       <td><StatusBadge status={m.status} /></td>
                       <td className="d-none d-xl-table-cell text-nowrap">{formatDate(m.created_at)}</td>
                     </tr>
@@ -188,6 +193,13 @@ export const MembersPage: React.FC<{ fixedStatus?: string; title?: string; subti
           roles={roles as any}
           onClose={() => setSelectedId(null)}
           onChanged={load}
+        />
+      )}
+
+      {createOpen && (
+        <CreateMemberModal
+          onClose={() => setCreateOpen(false)}
+          onSuccess={load}
         />
       )}
     </>
