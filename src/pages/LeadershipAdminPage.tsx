@@ -6,6 +6,8 @@ import { Avatar, ConfirmDialog, EmptyState, ErrorState, Field, Modal, PageHeader
 
 interface Leader {
   id: number;
+  member_id?: string | null;
+  is_live_member?: number;
   name: string;
   name_ta: string | null;
   designation: string;
@@ -121,7 +123,15 @@ export const LeadershipAdminPage: React.FC = () => {
                       <div className="d-flex align-items-center gap-2">
                         <Avatar src={mediaUrl(l.photo_url)} name={l.name} size={40} />
                         <div className="min-w-0">
-                          <div className="fw-semibold">{l.name}{l.qualification && <span className="text-muted fw-normal">, {l.qualification}</span>}</div>
+                          <div className="fw-semibold">
+                            {l.name}
+                            {l.qualification && <span className="text-muted fw-normal">, {l.qualification}</span>}
+                            {Boolean(l.is_live_member) && (
+                              <span className="badge bg-primary-subtle text-primary border border-primary-subtle ms-2 font-monospace small">
+                                {l.member_id || 'Live Member'}
+                              </span>
+                            )}
+                          </div>
                           <div className="small text-muted">{l.designation}</div>
                         </div>
                       </div>
@@ -130,8 +140,16 @@ export const LeadershipAdminPage: React.FC = () => {
                     <td className="d-none d-md-table-cell small">{l.phone || '—'}<div className="text-muted">{l.email}</div></td>
                     <td><StatusBadge status={l.status} /></td>
                     <td className="text-end text-nowrap">
-                      <button className="btn btn-icon" title="Edit" aria-label="Edit" onClick={() => { setFormError(null); setEditing({ ...l }); }}><i className="bi bi-pencil"></i></button>
-                      <button className="btn btn-icon text-danger" title="Delete" aria-label="Delete" onClick={() => setDeleting(l)}><i className="bi bi-trash"></i></button>
+                      {!l.is_live_member ? (
+                        <>
+                          <button className="btn btn-icon" title="Edit" aria-label="Edit" onClick={() => { setFormError(null); setEditing({ ...l }); }}><i className="bi bi-pencil"></i></button>
+                          <button className="btn btn-icon text-danger" title="Delete" aria-label="Delete" onClick={() => setDeleting(l)}><i className="bi bi-trash"></i></button>
+                        </>
+                      ) : (
+                        <a href="/members" className="btn btn-sm btn-outline-secondary" title="View in Members">
+                          <i className="bi bi-people me-1"></i>Member
+                        </a>
+                      )}
                     </td>
                   </tr>
                 ))}
